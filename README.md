@@ -39,6 +39,11 @@ Default: `60`.
 `d`  - days, `h`  - hours, `m`  - minutes, `s`  - seconds, `ms` - milliseconds.
 Default: `undef`.
 
+* `node_purge_ttl` - Automatically delete nodes that have been deactivated
+for the specified amount of time. This will also delete all facts, catalogs
+and reports for the node. This ttl may be specified the same way as node-ttl
+above. If unset, auto-deletion of nodes is disabled. Default: `undef`.
+
 * `log_slow_statements` - number of seconds before any SQL query is considered
 'slow'. Default: `10`.
 

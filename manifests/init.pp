@@ -1,6 +1,6 @@
 # == Class: puppetdb
 #
-# This class installs and configures puppetdb. Currently it is only supported
+# This class installs and configures PuppetDB. Currently it is only supported
 # to run on the same host as puppet master.
 #
 # This module needs to be extended if you want to be able to provision PuppetDB
@@ -8,77 +8,7 @@
 #
 # === Parameters
 #
-# [*vardir*]
-#   Where to store MQ/DB data
-#   Default: <code>/var/lib/puppetdb</code>
-#
-# [*logging_config*]
-#   Use an external log4j config file.
-#   Default: <code>/etc/puppetdb/log4j.properties</code>
-#
-# [*resource_query_limit*]
-#   Maximum number of results that a resource query may return
-#   Default: 20000
-#
-# [*threads*]
-#   How many command-processing threads to use, defaults to (CPUs / 2), so
-#   It is set to <code>undef</code> here, because puppetdb process does
-#   calculation itself. It can be specified to whatever number you want if
-#   needed.
-#
-# [*db_subprotocol*]
-#   What database backend protocol should be used.
-#   Valid values: <code>hsqldb</code> or <code>postgresql</code>
-#   Default: <code>hsqldb</code> - embedded db
-#
-# [*psql_host*]
-#   Postgresql database host.
-#   Default: <code>undef</code>
-#
-# [*psql_username*]
-#   Connect to psql database as a specific user.
-#   Default <code>undef</code>
-#
-# [*psql_password*]
-#   Connect to psql database with a specific password.
-#   Default: <code>undef</code>
-#
-# [*gc_interval*]
-#   How often in minutes to compact the database.
-#   Default: <code>60</code>
-#
-# [*node_ttl*]
-#   Auto-deactivate nodes that haven't seen any activity (no new catalogs,
-#   facts, etc) in the specified amount of time.
-#     Valid values:
-#       `d`  - days
-#       `h`  - hours
-#       `m`  - minutes
-#       `s`  - seconds
-#       `ms` - milliseconds
-#
-#   Default: <code>undef</code>.
-#
-# [*log_slow_statements*]
-#   Number of seconds before any SQL query is considered 'slow'.
-#   Default: <code>10</code>
-#
-# [*jvm_heap_size*]
-#   JVM heap size for PuppetDB. It accepts memory size with a letter
-#   m for megabytes, g for gigabytes, etc.
-#   Default: <code>512m</code>
-#
-# === Requires
-#
-# None
-#
-# === Examples
-#
-#     ---
-#     classes:
-#       - puppetdb
-#
-#     puppetdb::threads: '4'
+# See README.md
 #
 # === Authors
 #
@@ -97,26 +27,31 @@ class puppetdb(
     $psql_password        = undef,
     $gc_interval          = '60',
     $node_ttl             = undef,
+    $node_purge_ttl       = undef,
     $log_slow_statements  = '10',
     $jvm_heap_size        = '512m',
   ) {
-  case $::operatingsystem {
-    CentOS, RedHat: {
-      $package_name = 'puppetdb'
-      $service_name = 'puppetdb'
+  case $::osfamily {
+    RedHat: {
+      $package_name   = 'puppetdb'
+      $service_name   = 'puppetdb'
+      $sysconfig_file = '/etc/sysconfig/puppetdb'
+    }
+    Debian: {
+      $package_name   = 'puppetdb'
+      $service_name   = 'puppetdb'
+      $sysconfig_file = '/etc/default/puppetdb'
     }
     default: {
       fail("Module ${module_name} is not supported on ${::operatingsystem}")
     }
   }
 
-  $config_file         = '/etc/puppetdb/conf.d/config.ini'
-  $db_config_file      = '/etc/puppetdb/conf.d/database.ini'
-  $conf_template       = 'config.ini.erb'
-  $sysconfig_file      = '/etc/sysconfig/puppetdb'
-  $sysconf_template    = 'sysconfig_puppetdb.erb'
-  $db_conf_template    = 'database.ini.erb'
-  $store_password_file = '/etc/puppetdb/ssl/puppetdb_keystore_pw.txt'
+  $config_file      = '/etc/puppetdb/conf.d/config.ini'
+  $db_config_file   = '/etc/puppetdb/conf.d/database.ini'
+  $conf_template    = 'config.ini.erb'
+  $sysconf_template = 'sysconfig_puppetdb.erb'
+  $db_conf_template = 'database.ini.erb'
 
   # Check what database backend is configured to be used, if psql, fail if
   # psql credentials are not set.
@@ -129,6 +64,13 @@ class puppetdb(
 
   package { $package_name:
     ensure => installed,
+    notify => Exec['/usr/sbin/puppetdb-ssl-setup']
+  }
+
+  exec { '/usr/sbin/puppetdb-ssl-setup':
+    creates     => '/etc/puppetdb/ssl/private.pem',
+    refreshonly => true,
+    before      => Service[$service_name],
   }
 
   service { $service_name:

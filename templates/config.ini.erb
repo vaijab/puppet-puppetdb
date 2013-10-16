@@ -1,15 +1,15 @@
 #
-# This file is managed by puppet
+# This file is managed by puppet class 'puppetdb'
 #
 [global]
 # Store mq/db data in a custom directory
-vardir = <%= vardir %>
+vardir = <%= @vardir %>
 
 # Use an external log4j config file
-logging-config = <%= logging_config %>
+logging-config = <%= @logging_config %>
 
 # Maximum number of results that a resource query may return
-resource-query-limit = <%= resource_query_limit %>
+resource-query-limit = <%= @resource_query_limit %>
 
 [command-processing]
-<% if @threads %>threads = <%= threads %><% end -%>
+<% if @threads %>threads = <%= @threads %><% end -%>
